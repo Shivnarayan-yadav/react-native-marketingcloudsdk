@@ -145,96 +145,6 @@ pod install
 
 Follow [these instructions](./ios_push.md) to enable push for iOS.
 
-### URL Handling
-
-The SDK doesn’t automatically present URLs from these sources.
-
-* CloudPage URLs from push notifications
-* OpenDirect URLs from push notifications
-* Action URLs from in-app messages
-
-To handle URLs from push notifications, you'll need to implement the following for Android and iOS.
-
-#### Android
-
-```java
-@Override
-public void onCreate() {
-    super.onCreate();
-
-    SFMCSdk.configure((Context) this, SFMCSdkModuleConfig.build(builder -> { 
-        builder.setPushModuleConfig(MarketingCloudConfig.builder()
-        .setApplicationId("{MC_APP_ID}")
-        .setAccessToken("{MC_ACCESS_TOKEN}")
-        .setSenderId("{FCM_SENDER_ID_FOR_MC_APP}")
-        .setMarketingCloudServerUrl("{MC_APP_SERVER_URL}")
-        .setNotificationCustomizationOptions(NotificationCustomizationOptions.create(R.drawable.ic_notification))
-        .setAnalyticsEnabled(true)
-        // Here we set the URL handler to present URLs from CloudPages, OpenDirect, and In-App Messages
-        .setUrlHandler((context, s, s1) -> PendingIntent.getActivity(
-            context, 
-            new Random().nextInt(), 
-            new Intent(Intent.ACTION_VIEW, Uri.parse(s)), 
-            PendingIntent.FLAG_UPDATE_CURRENT
-        )).build(this));
-
-        return null;
-    }), initializationStatus -> {
-        Log.e("TAG", "STATUS "+initializationStatus);
-        if (initializationStatus.getStatus() == 1) {
-            Log.e("TAG", "STATUS SUCCESS");
-        }
-        return null;
-    });
-
-    // The rest of the onCreate method
-}
-```
-
-#### iOS
-
-```objc
-// AppDelegate.h ----
-
-#import <MarketingCloudSDK/MarketingCloudSDK.h>
-#import <SFMCSDK/SFMCSDK.h>
-
-...
-
-// Implement the SFMCSdkURLHandlingDelegate delegate
-@interface AppDelegate : RCTAppDelegate<UNUserNotificationCenterDelegate, SFMCSdkURLHandlingDelegate>
-
-// AppDelegate.mm ----
-
-// This method is called after successfully initializing the SFMCSdk
-- (void)pushSetup {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    // Here we set the URL Handling delegate to present URLs from CloudPages, OpenDirect, and In-App Messages
-    [[SFMCSdk mp] setURLHandlingDelegate:self];
-
-    // Set UNUserNotificationCenter delegate, register for remote notifications, etc...
-  });
-}
-
-// ...
-
-// Implement the required delegate method to handle URLs
-- (void)sfmc_handleURL:(NSURL * _Nonnull)url type:(NSString * _Nonnull)type {
-    if ([[UIApplication sharedApplication] canOpenURL:url]) {
-        [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:^(BOOL success) {
-            if (success) {
-                NSLog(@"url %@ opened successfully", url);
-            } else {
-                NSLog(@"url %@ could not be opened", url);
-            }
-        }];
-    }
-}
-
-```
-
-Please also see additional documentation on URL Handling on [https://developer.salesforce.com/docs/marketing/mobilepush/guide/handle-urls-custom-keys.html](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/sdk-implementation/url-handling.html)
-
 ## API Reference <a name="reference"></a>
 
 **Kind**: global class  
@@ -261,6 +171,21 @@ Please also see additional documentation on URL Handling on [https://developer.s
     * [.isAnalyticsEnabled()](#MCReactModule.isAnalyticsEnabled) ⇒ <code>Promise.&lt;boolean&gt;</code>
     * [.setPiAnalyticsEnabled(analyticsEnabled)](#MCReactModule.setPiAnalyticsEnabled)
     * [.isPiAnalyticsEnabled()](#MCReactModule.isPiAnalyticsEnabled) ⇒ <code>Promise.&lt;boolean&gt;</code>
+    * [.getMessages()](#MCReactModule.getMessages)
+    * [.getReadMessages()](#MCReactModule.getReadMessages)
+    * [.getUnreadMessages()](#MCReactModule.getUnreadMessages)
+    * [.getDeletedMessages()](#MCReactModule.getDeletedMessages)
+    * [.setMessageRead(id)](#MCReactModule.setMessageRead)
+    * [.deleteMessage(id)](#MCReactModule.deleteMessage)
+    * [.getMessageCount()](#MCReactModule.getMessageCount)
+    * [.getReadMessageCount()](#MCReactModule.getReadMessageCount)
+    * [.getUnreadMessageCount()](#MCReactModule.getUnreadMessageCount)
+    * [.getDeletedMessageCount()](#MCReactModule.getDeletedMessageCount)
+    * [.markAllMessagesRead()](#MCReactModule.markAllMessagesRead)
+    * [.markAllMessagesDeleted()](#MCReactModule.markAllMessagesDeleted)
+    * [.registerInboxResponseListener()](#MCReactModule.registerInboxResponseListener)
+    * [.unregisterInboxResponseListener()](#MCReactModule.unregisterInboxResponseListener)
+    * [.refreshInbox()](#MCReactModule.refreshInbox)
 
 <a name="MCReactModule.isPushEnabled"></a>
 
@@ -273,8 +198,8 @@ SDK.
     enabled.  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.push/-push-message-manager/is-push-enabled.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)pushEnabled)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.push/-push-message-manager/is-push-enabled.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)pushEnabled)
 
 <a name="MCReactModule.enablePush"></a>
 
@@ -284,8 +209,8 @@ Enables push messaging in the native Marketing Cloud SDK.
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.push/-push-message-manager/enable-push.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)setPushEnabled:)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.push/-push-message-manager/enable-push.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)setPushEnabled:)
 
 <a name="MCReactModule.disablePush"></a>
 
@@ -295,8 +220,8 @@ Disables push messaging in the native Marketing Cloud SDK.
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.push/-push-message-manager/disable-push.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)setPushEnabled:)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.push/-push-message-manager/disable-push.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)setPushEnabled:)
 
 <a name="MCReactModule.getSystemToken"></a>
 
@@ -308,8 +233,8 @@ the device.
 **Returns**: <code>Promise.&lt;?string&gt;</code> - A promise to the system token string.  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-system-token.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)deviceToken)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-system-token.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)deviceToken)
 
 <a name="MCReactModule.getAttributes"></a>
 
@@ -321,8 +246,8 @@ Returns the maps of attributes set in the registration.
     in the registration.  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-attributes.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)attributes)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-attributes.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)attributes)
 
 <a name="MCReactModule.setAttribute"></a>
 
@@ -332,8 +257,8 @@ Sets the value of an attribute in the registration.
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/SFMCSdk/8.0/-s-f-m-c%20-s-d-k/com.salesforce.marketingcloud.sfmcsdk.components.identity/-identity/set-profile-attribute.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/8.0/Classes/IDENTITY.html#/c:@M@SFMCSDK@objc(cs)SFMCSdkIDENTITY(im)setProfileAttributes:)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/SFMCSdk/8.0/-s-f-m-c%20-s-d-k/com.salesforce.marketingcloud.sfmcsdk.components.identity/-identity/set-profile-attributes.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/9.0/Classes/IDENTITY.html#/c:@M@SFMCSDK@objc(cs)SFMCSdkIDENTITY(im)setProfileAttributes:)
 
 
 | Param | Type | Description |
@@ -349,8 +274,8 @@ Clears the value of an attribute in the registration.
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/-editor/clear-attribute.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/8.0/Classes/IDENTITY.html#/c:@M@SFMCSDK@objc(cs)SFMCSdkIDENTITY(im)clearProfileAttributeWithKey:)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/SFMCSdk/8.0/-s-f-m-c%20-s-d-k/com.salesforce.marketingcloud.sfmcsdk.components.identity/-identity/clear-profile-attribute.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/9.0/Classes/IDENTITY.html#/c:@M@SFMCSDK@objc(cs)SFMCSdkIDENTITY(im)clearProfileAttributeWithKey:)
 
 
 | Param | Type | Description |
@@ -363,8 +288,8 @@ Clears the value of an attribute in the registration.
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/-editor/add-tag.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)addTag:)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/-editor/add-tag.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)addTag:)
 
 
 | Param | Type | Description |
@@ -377,8 +302,8 @@ Clears the value of an attribute in the registration.
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/-editor/remove-tag.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)removeTag:)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/-editor/remove-tag.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)removeTag:)
 
 
 | Param | Type | Description |
@@ -394,8 +319,8 @@ Returns the tags currently set on the device.
 **Returns**: <code>Promise.&lt;Array.&lt;string&gt;&gt;</code> - A promise to the array of tags currently set in the native SDK.  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-tags.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)tags)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-tags.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)tags)
 
 <a name="MCReactModule.setContactKey"></a>
 
@@ -406,7 +331,7 @@ Sets the contact key for the device's user.
 **See**
 
 - [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/SFMCSdk/8.0/-s-f-m-c%20-s-d-k/com.salesforce.marketingcloud.sfmcsdk.components.identity/-identity/set-profile-id.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/8.0/Classes/IDENTITY.html#/c:@M@SFMCSDK@objc(cs)SFMCSdkIDENTITY(im)setProfileId:)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/9.0/Classes/IDENTITY.html#/c:@M@SFMCSDK@objc(cs)SFMCSdkIDENTITY(im)setProfileId:)
 
 
 | Param | Type | Description |
@@ -422,8 +347,8 @@ Returns the contact key currently set on the device.
 **Returns**: <code>Promise.&lt;?string&gt;</code> - A promise to the current contact key.  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-contact-key.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)contactKey)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-contact-key.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)contactKey)
 
 <a name="MCReactModule.enableLogging"></a>
 
@@ -458,18 +383,16 @@ the SDK and will be requested by the Marketing Cloud support team.
 **See**
 
 - [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/SFMCSdk/8.0/-s-f-m-c%20-s-d-k/com.salesforce.marketingcloud.sfmcsdk/-s-f-m-c-sdk/get-sdk-state.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/8.0/Classes/SFMCSdk.html#/c:@M@SFMCSDK@objc(cs)SFMCSdk(cm)state)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/SFMCSdk/9.0/Classes/SFMCSdk.html#/c:@M@SFMCSDK@objc(cs)SFMCSdk(cm)state)
 
 <a name="MCReactModule.track"></a>
 
 ### MCReactModule.track(event)
-This method helps to track events, which could result in actions such as an InApp Message being displayed.
+This method helps to track events, which could result in actions such as an InApp Message
+being displayed.
 
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
-**See**
-
-- [Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/event-tracking.html)
-
+**See**: [Android & iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/event-tracking.html)  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -484,8 +407,8 @@ Returns the deviceId used by the Marketing Cloud to send push messages to the de
 **Returns**: <code>Promise.&lt;?string&gt;</code> - A promise to the device Id.  
 **See**
 
-- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/8.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-device-id.html)
-- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/8.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)deviceIdentifier)
+- [Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.registration/-registration-manager/get-device-id.html)
+- [iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)deviceIdentifier)
 
 <a name="MCReactModule.setAnalyticsEnabled"></a>
 
@@ -493,10 +416,7 @@ Returns the deviceId used by the Marketing Cloud to send push messages to the de
 Enables or disables analytics in the Marketing Cloud SDK.
 
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
-**See**
-
-- [Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)
-
+**See**: [Android & iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -508,21 +428,16 @@ Enables or disables analytics in the Marketing Cloud SDK.
 Checks if analytics is enabled in the Marketing Cloud SDK.
 
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
-**Returns**: <code>Promise.&lt;boolean&gt;</code> - A promise to the boolean representation of whether analytics is enabled.  
-**See**
-
-- [Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)
-
+**Returns**: <code>Promise.&lt;boolean&gt;</code> - A promise to the boolean representation of whether analytics is
+    enabled.  
+**See**: [Android & iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)  
 <a name="MCReactModule.setPiAnalyticsEnabled"></a>
 
 ### MCReactModule.setPiAnalyticsEnabled(analyticsEnabled)
 Enables or disables Predictive Intelligence analytics in the Marketing Cloud SDK.
 
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
-**See**
-
-- [Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)
-
+**See**: [Android & iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -534,10 +449,213 @@ Enables or disables Predictive Intelligence analytics in the Marketing Cloud SDK
 Checks if Predictive Intelligence analytics is enabled in the Marketing Cloud SDK.
 
 **Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
-**Returns**: <code>Promise.&lt;boolean&gt;</code> - A promise to the boolean representation of whether PI analytics is enabled.  
+**Returns**: <code>Promise.&lt;boolean&gt;</code> - A promise to the boolean representation of whether PI analytics
+    is enabled.  
+**See**: [Android & iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)  
+<a name="MCReactModule.getMessages"></a>
+
+### MCReactModule.getMessages()
+Retrieves the list of Active, Read & Unread, not Deleted Inbox Messages.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
 **See**
 
-- [Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/runtime-toggles.html)
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-messages.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getAllMessages)
+
+<a name="MCReactModule.getReadMessages"></a>
+
+### MCReactModule.getReadMessages()
+Retrieves the list of Active, Read, not Deleted Inbox Messages
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-read-messages.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getReadMessages)
+
+<a name="MCReactModule.getUnreadMessages"></a>
+
+### MCReactModule.getUnreadMessages()
+Retrieves the list of Active, Unread, not Deleted Inbox Messages
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-unread-messages.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getUnreadMessages)
+
+<a name="MCReactModule.getDeletedMessages"></a>
+
+### MCReactModule.getDeletedMessages()
+Retrieves the list of Active, Deleted Inbox Messages
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-deleted-messages.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getDeletedMessages)
+
+<a name="MCReactModule.setMessageRead"></a>
+
+### MCReactModule.setMessageRead(id)
+Marks a InboxMessage as read in local storage.
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/set-message-read.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)markMessageWithIdReadWithMessageId:)
+
+
+| Param | Description |
+| --- | --- |
+| id | The InboxMessage#id() of the InboxMessage to mark as read. See also: |
+
+<a name="MCReactModule.deleteMessage"></a>
+
+### MCReactModule.deleteMessage(id)
+Marks a InboxMessage as deleted in local storage.
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/delete-message.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)markMessageWithIdDeletedWithMessageId:)
+
+
+| Param | Description |
+| --- | --- |
+| id | The InboxMessage#id() of the InboxMessage to mark as deleted. See also: |
+
+<a name="MCReactModule.getMessageCount"></a>
+
+### MCReactModule.getMessageCount()
+Retrieves the total number of not deleted Inbox Messages.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-message-count.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getAllMessagesCount)
+
+<a name="MCReactModule.getReadMessageCount"></a>
+
+### MCReactModule.getReadMessageCount()
+Retrieves the total number of read, not deleted Inbox Messages.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-read-message-count.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getReadMessagesCount)
+
+<a name="MCReactModule.getUnreadMessageCount"></a>
+
+### MCReactModule.getUnreadMessageCount()
+Retrieves the total number of unread, not deleted Inbox Messages
+Returns a Future to the list of InboxMessage representing Active, Read & Unread, not Deleted
+Inbox Messages.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-unread-message-count.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getUnreadMessagesCount)
+
+<a name="MCReactModule.getDeletedMessageCount"></a>
+
+### MCReactModule.getDeletedMessageCount()
+Retrieves the total number of deleted Inbox Messages regardless of their read status.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/get-deleted-message-count.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)getDeletedMessagesCount)
+
+<a name="MCReactModule.markAllMessagesRead"></a>
+
+### MCReactModule.markAllMessagesRead()
+Marks all active, unread InboxMessages as read.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/mark-all-messages-read.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)markAllMessagesRead)
+
+<a name="MCReactModule.markAllMessagesDeleted"></a>
+
+### MCReactModule.markAllMessagesDeleted()
+Marks all active InboxMessages as deleted.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/mark-all-messages-deleted.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)markAllMessagesDeleted)
+
+<a name="MCReactModule.registerInboxResponseListener"></a>
+
+### MCReactModule.registerInboxResponseListener()
+Marks all active InboxMessages as deleted.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/register-inbox-response-listener.html)
+- [ iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/implement-inbox-messaging-ios.html)
+
+<a name="MCReactModule.unregisterInboxResponseListener"></a>
+
+### MCReactModule.unregisterInboxResponseListener()
+Marks all active InboxMessages as deleted.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/unregister-inbox-response-listener.html)
+- [ iOS Docs](https://developer.salesforce.com/docs/marketing/mobilepush/guide/implement-inbox-messaging-ios.html)
+
+<a name="MCReactModule.refreshInbox"></a>
+
+### MCReactModule.refreshInbox()
+Requests an updated list of Inbox Messages from the Marketing Cloud Servers. The Inbox
+request can be made, at most, once per minute. This throttle also includes the Inbox request
+that is made by the SDK when your application is brought into the foreground.
+
+See also:
+
+**Kind**: static method of [<code>MCReactModule</code>](#MCReactModule)  
+**See**
+
+- [ Android Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-Android/javadocs/MarketingCloudSdk/9.0/-marketing%20-cloud%20-s-d-k/com.salesforce.marketingcloud.messages.inbox/-inbox-message-manager/refresh-inbox.html)
+- [ iOS Docs](https://salesforce-marketingcloud.github.io/MarketingCloudSDK-iOS/appledocs/MarketingCloudSdk/9.0/Classes/PushModule.html#/c:@M@MarketingCloudSDK@objc(cs)SFMCSdkPushModule(im)refreshMessages)
 
 
 ### 3rd Party Product Language Disclaimers
